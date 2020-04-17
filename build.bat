@@ -12,10 +12,30 @@ set OPTMODEL_DIR=""
 set BUILD_TAILOR=OFF
 set BUILD_CV=OFF
 set SHUTDOWN_LOG=ON  
-
+set LITE_WITH_PROFILE=OFF
 set THIRDPARTY_TAR=https://paddle-inference-dist.bj.bcebos.com/PaddleLite/third-party-05b862.tar.gz
 
 set workspace=%source_path%
+
+:round
+@echo off
+if /I "%1"=="build_extra" (
+    set BUILD_EXTRA=ON
+) else if /I "%1"=="with_python" (
+      set BUILD_PYTHON=ON
+) else if /I  "%1"=="lite_with_profile" (
+      set LITE_WITH_PROFILE=ON
+) else (
+      goto main
+)
+shift
+goto round
+
+:main
+cd "%workspace%"
+echo "BUILD_EXTRA=%BUILD_EXTRA%"
+echo "WITH_PYTHON=%BUILD_PYTHON%"
+echo "LITE_WITH_PROFILE=%LITE_WITH_PROFILE%"
 
 :set_vcvarsall_dir
 SET /P vcvarsall_dir="Please input the path of visual studio command Prompt, such as C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat   =======>"
@@ -24,7 +44,7 @@ call:remove_space
 set vcvarsall_dir=!tmp_var!   
 IF NOT EXIST "%vcvarsall_dir%" (
     echo "------------%vcvarsall_dir% not exist------------"
-    goto set_vcvarsall_dir
+    goto:eof
 )
 
 call:prepare_thirdparty
@@ -58,17 +78,17 @@ cd "%build_directory%"
   cmake ..   -G "Visual Studio 14 2015 Win64" -T host=x64  -DWITH_MKL=ON      ^
             -DWITH_MKLDNN=OFF   ^
             -DLITE_WITH_X86=ON  ^
-            -DLITE_WITH_PROFILE=OFF ^
+            -DLITE_WITH_PROFILE=%LITE_WITH_PROFILE% ^
             -DWITH_LITE=ON ^
             -DLITE_WITH_LIGHT_WEIGHT_FRAMEWORK=OFF ^
             -DLITE_WITH_ARM=OFF ^
             -DWITH_GPU=OFF ^
-            -DLITE_BUILD_EXTRA=ON ^
-            -DLITE_WITH_PYTHON=ON ^
+            -DLITE_BUILD_EXTRA=%BUILD_EXTRA% ^
+            -DLITE_WITH_PYTHON=%LITE_WITH_PYTHON% ^
             -DPYTHON_EXECUTABLE="%python_path%"
 
 call "%vcvarsall_dir%" amd64
-
+cd "%build_directory%"
 msbuild /m /p:Configuration=Release lite\publish_inference.vcxproj >mylog.txt 2>&1
 goto:eof
 
