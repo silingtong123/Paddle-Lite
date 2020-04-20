@@ -225,6 +225,7 @@ if (LITE_WITH_X86)
             COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_BINARY_DIR}/third_party/install" "${INFER_LITE_PUBLISH_ROOT}/third_party"
             COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_BINARY_DIR}/third_party/eigen3" "${INFER_LITE_PUBLISH_ROOT}/third_party"
             COMMAND ${CMAKE_COMMAND} -E make_directory "${INFER_LITE_PUBLISH_ROOT}/demo/cxx"
+            COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_SOURCE_DIR}/lite/demo/cxx" "${INFER_LITE_PUBLISH_ROOT}/demo/cxx"
         )
         add_dependencies(publish_inference_x86_cxx_lib publish_inference_x86_cxx_demos)
         add_dependencies(publish_inference_x86_cxx_demos paddle_api_full_bundled eigen3)
