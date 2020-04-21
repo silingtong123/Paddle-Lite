@@ -22,9 +22,9 @@ set workspace=%source_path%
 if /I "%1"=="build_extra" (
     set BUILD_EXTRA=ON
 ) else if /I "%1"=="with_python" (
-      set BUILD_PYTHON=ON
-) else if /I  "%1"=="lite_with_profile" (
-      set LITE_WITH_PROFILE=ON
+      set WITH_PYTHON=ON
+) else if /I  "%1"=="with_profile" (
+      set WITH_PROFILE=ON
 ) else (
       goto main
 )
@@ -34,8 +34,8 @@ goto round
 :main
 cd "%workspace%"
 echo "BUILD_EXTRA=%BUILD_EXTRA%"
-echo "WITH_PYTHON=%BUILD_PYTHON%"
-echo "LITE_WITH_PROFILE=%LITE_WITH_PROFILE%"
+echo "WITH_PYTHON=%WITH_PYTHON%"
+echo "LITE_WITH_PROFILE=%WITH_PROFILE%"
 
 :set_vcvarsall_dir
 SET /P vcvarsall_dir="Please input the path of visual studio command Prompt, such as C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat   =======>"
@@ -84,7 +84,7 @@ cd "%build_directory%"
             -DLITE_WITH_ARM=OFF ^
             -DWITH_GPU=OFF ^
             -DLITE_BUILD_EXTRA=%BUILD_EXTRA% ^
-            -DLITE_WITH_PYTHON=%LITE_WITH_PYTHON% ^
+            -DLITE_WITH_PYTHON=%WITH_PYTHON% ^
             -DPYTHON_EXECUTABLE="%python_path%"
 
 call "%vcvarsall_dir%" amd64
