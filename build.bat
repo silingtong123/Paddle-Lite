@@ -1,4 +1,4 @@
-@echo off
+rem @echo off
 setlocal
 setlocal enabledelayedexpansion
 
@@ -28,7 +28,7 @@ if /I "%1"=="build_extra" (
 ) else if /I  "%1"=="with_profile" (
       set LITE_WITH_PROFILE=ON
 ) else if /I  "%1"=="build_for_ci" (
-      set WITH_TESTING=ON
+      set BUILD_FOR_CI=ON
 ) else (
       goto main
 )
@@ -60,15 +60,16 @@ IF NOT EXIST "%vcvarsall_dir%" (
 
 call:prepare_thirdparty
 
+set root_dir=%workspace%
+set build_directory=%BUILD_DIR%\build.lite.x86_ci
+set build_test=%BUILD_DIR%\build
+set GEN_CODE_PATH_PREFIX=%build_directory%\lite\gen_code
+set DEBUG_TOOL_PATH_PREFIX=%build_directory%\lite\tools\debug
+
 if EXIST "%build_directory%" (
     call:rm_rebuild_dir "%build_directory%"
     md "%build_directory%"
 ) 
-
-set root_dir=%workspace%
-set build_directory=%BUILD_DIR%\build.lite.x86
-set GEN_CODE_PATH_PREFIX=%build_directory%\lite\gen_code
-set DEBUG_TOOL_PATH_PREFIX=%build_directory%\lite\tools\debug
 
 rem for code gen, a source file is generated after a test, but is dependended by some targets in cmake.
 rem here we fake an empty file to make cmake works.
@@ -101,7 +102,10 @@ if "%WITH_TESTING%"=="ON" (
 
 call "%vcvarsall_dir%" amd64
 cd "%build_directory%"
-msbuild /m /p:Configuration=Release lite\lite_compile_deps.vcxproj >mylog1.txt 2>&1
+msbuild /m /p:Configuration=Release lite\lite_compile_deps.vcxproj >mylog.txt 2>&1
+cmake ..   -G "Visual Studio 14 2015 Win64" -T host=x64 -DWITH_LITE=ON -DLITE_ON_MODEL_OPTIMIZE_TOOL=ON -DWITH_TESTING=OFF -DLITE_BUILD_EXTRA=ON
+msbuild /m /p:Configuration=Release lite\api\opt.vcxproj >opt_log.txt 2>&1
+
 call:test_server
 
 goto:eof
@@ -205,8 +209,3 @@ goto:eof
     ) 
 goto:eof 
 
-:test_model_optimize_tool_compile 
-    cd "%workspace%\\build\\
-    cmake .. -G "Visual Studio 14 2015 Win64" -T host=x64 -DWITH_LITE=ON -DLITE_ON_MODEL_OPTIMIZE_TOOL=ON -DWITH_TESTING=OFF -DLITE_BUILD_EXTRA=ON
-    msbuild /m /p:Configuration=Release opt 
-goto:eof
