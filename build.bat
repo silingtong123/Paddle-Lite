@@ -1,4 +1,4 @@
-rem @echo off
+@echo off
 setlocal
 setlocal enabledelayedexpansion
 
@@ -17,6 +17,7 @@ set THIRDPARTY_TAR=https://paddle-inference-dist.bj.bcebos.com/PaddleLite/third-
 set WITH_TESTING=OFF
 set workspace=%source_path%
 set test_file="lite_tests.txt"
+set BUILD_FOR_CI=OFF
 rem It will eagerly test all lite related unittests.
 
 :round
@@ -29,6 +30,9 @@ if /I "%1"=="build_extra" (
       set LITE_WITH_PROFILE=ON
 ) else if /I  "%1"=="build_for_ci" (
       set BUILD_FOR_CI=ON
+      set WITH_TESTING=ON
+) else if /I  "%1"=="with_test" (
+      set WITH_TESTING=ON
 ) else (
       goto main
 )
@@ -61,7 +65,7 @@ IF NOT EXIST "%vcvarsall_dir%" (
 call:prepare_thirdparty
 
 set root_dir=%workspace%
-set build_directory=%BUILD_DIR%\build.lite.x86_ci
+set build_directory=%BUILD_DIR%\build.lite.x86
 set build_test=%BUILD_DIR%\build
 set GEN_CODE_PATH_PREFIX=%build_directory%\lite\gen_code
 set DEBUG_TOOL_PATH_PREFIX=%build_directory%\lite\tools\debug
@@ -98,15 +102,17 @@ if "%WITH_TESTING%"=="ON" (
             -DLITE_BUILD_EXTRA=ON ^
             -DLITE_WITH_PYTHON=OFF ^
             -DPYTHON_EXECUTABLE="%python_path%" ^
-            -DWITH_TESTING=%WITH_TESTING%
+            -DWITH_TESTING=ON
 
 call "%vcvarsall_dir%" amd64
 cd "%build_directory%"
 msbuild /m /p:Configuration=Release lite\lite_compile_deps.vcxproj >mylog.txt 2>&1
-cmake ..   -G "Visual Studio 14 2015 Win64" -T host=x64 -DWITH_LITE=ON -DLITE_ON_MODEL_OPTIMIZE_TOOL=ON -DWITH_TESTING=OFF -DLITE_BUILD_EXTRA=ON
-msbuild /m /p:Configuration=Release lite\api\opt.vcxproj >opt_log.txt 2>&1
 
-call:test_server
+if "%BUILD_FOR_CI%"=="ON" (
+    call:test_server
+    cmake ..   -G "Visual Studio 14 2015 Win64" -T host=x64 -DWITH_LITE=ON -DLITE_ON_MODEL_OPTIMIZE_TOOL=ON -DWITH_TESTING=OFF -DLITE_BUILD_EXTRA=ON
+    msbuild /m /p:Configuration=Release lite\api\opt.vcxproj >opt_log.txt 2>&1
+)
 
 goto:eof
 
