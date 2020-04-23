@@ -3,17 +3,14 @@ setlocal
 setlocal enabledelayedexpansion
 
 set source_path=%~dp0
-rem  global variables
 set BUILD_EXTRA=OFF
-set BUILD_JAVA=ON
 set BUILD_PYTHON=OFF
 set BUILD_DIR=%source_path%
-set OPTMODEL_DIR=""
-set BUILD_TAILOR=OFF
-set BUILD_CV=OFF
 set SHUTDOWN_LOG=ON  
 set WITH_PROFILE=OFF
-
+set WITH_TESTING=OFF
+set BUILD_FOR_CI=OFF
+set Test_FILE="lite_tests.txt"
 set THIRDPARTY_TAR=https://paddle-inference-dist.bj.bcebos.com/PaddleLite/third-party-05b862.tar.gz
 
 set workspace=%source_path%
@@ -23,20 +20,32 @@ set workspace=%source_path%
 if /I "%1"=="build_extra" (
     set BUILD_EXTRA=ON
 ) else if /I "%1"=="with_python" (
-      set BUILD_PYTHON=ON
+    set BUILD_PYTHON=ON
 ) else if /I  "%1"=="with_profile" (
-      set WITH_PROFILE=ON
+    set WITH_PROFILE=ON
+) else if /I  "%1"=="build_for_ci" (
+    set BUILD_FOR_CI=ON
+    set WITH_TESTING=ON
+    set BUILD_EXTRA=ON
+    set WITH_PROFILE=ON
+) else if /I  "%1"=="help" (
+      call:print_usage
+      goto:eof
 ) else (
-      goto main
+    goto main
 )
 shift
 goto round
 
 :main
 cd "%workspace%"
-echo "BUILD_EXTRA=%BUILD_EXTRA%"
-echo "WITH_PYTHON=%BUILD_PYTHON%"
-echo "LITE_WITH_PROFILE=%WITH_PROFILE%"
+
+echo "------------------------------------------------------------------------------------------------------|"
+echo "|  BUILD_EXTRA=%BUILD_EXTRA%                                                                          |"
+echo "|  WITH_PYTHON=%BUILD_PYTHON%                                                                         |"
+echo "|  LITE_WITH_PROFILE=%WITH_PROFILE%                                                                   |"
+echo "|  WITH_TESTING=%WITH_TESTING%                                                                        |"
+echo "------------------------------------------------------------------------------------------------------|"
 
 :set_vcvarsall_dir
 SET /P vcvarsall_dir="Please input the path of visual studio command Prompt, such as C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat   =======>"
@@ -50,18 +59,19 @@ IF NOT EXIST "%vcvarsall_dir%" (
 
 call:prepare_thirdparty
 
-if EXIST "%build_directory%" (
-    call:rm_rebuild_dir "%build_directory%"
-    md "%build_directory%"
-) 
-
 set root_dir=%workspace%
 set build_directory=%BUILD_DIR%\build.lite.x86
 set GEN_CODE_PATH_PREFIX=%build_directory%\lite\gen_code
 set DEBUG_TOOL_PATH_PREFIX=%build_directory%\lite\tools\debug
 
-rem for code gen, a source file is generated after a test, but is dependended by some targets in cmake.
-rem here we fake an empty file to make cmake works.
+REM "Clean the build directory."
+if EXIST "%build_directory%" (
+    call:rm_rebuild_dir "%build_directory%"
+    md "%build_directory%"
+)
+
+REM "for code gen, a source file is generated after a test, but is dependended by some targets in cmake."
+REM "here we fake an empty file to make cmake works."
 if NOT EXIST "%GEN_CODE_PATH_PREFIX%" (
     md "%GEN_CODE_PATH_PREFIX%"
 )
@@ -86,12 +96,20 @@ cd "%build_directory%"
             -DWITH_GPU=OFF ^
             -DLITE_BUILD_EXTRA=%BUILD_EXTRA% ^
             -DLITE_WITH_PYTHON=%WITH_PYTHON% ^
+            -DWITH_TESTING=%WITH_TESTING%    ^
             -DPYTHON_EXECUTABLE="%python_path%"
 
 call "%vcvarsall_dir%" amd64
-
 cd "%build_directory%"
-msbuild /m /p:Configuration=Release lite\publish_inference.vcxproj >mylog.txt 2>&1
+
+if "%BUILD_FOR_CI%"=="ON" (
+    msbuild /m /p:Configuration=Release lite\lite_compile_deps.vcxproj
+    call:test_server
+    cmake ..   -G "Visual Studio 14 2015 Win64" -T host=x64 -DWITH_LITE=ON -DLITE_ON_MODEL_OPTIMIZE_TOOL=ON -DWITH_TESTING=OFF -DLITE_BUILD_EXTRA=ON
+    msbuild /m /p:Configuration=Release lite\api\opt.vcxproj
+) else (
+    msbuild /m /p:Configuration=Release lite\publish_inference.vcxproj 
+)
 goto:eof
 
 :prepare_thirdparty 
@@ -153,4 +171,22 @@ if "%tmp_var:~-1%"==" " (
     set "tmp_var=%tmp_var:~0,-1%"
     goto remove_left_space
 )
+goto:eof
+
+:print_usage
+echo "------------------------------------------------------------------------------------------------------|"
+echo "|  Methods of compiling Paddle-lite Windows library:                                                  |"
+echo "|-----------------------------------------------------------------------------------------------------|"
+echo "|  compile windows library: ( x86 )                                                                   |" 
+echo "|      build_windows.bat                                                                              |"
+echo "|  print help information:                                                                            |"
+echo "|      build_windows.bat help                                                                         |"
+echo "|                                                                                                     |"
+echo "|  optional argument:                                                                                 |"
+echo "|      with_profile: Enable profile mode in lite framework. Default  OFF.                             |"
+echo "|      with_python: Enable Python api lib in lite mode. Default  OFF.                                 |"
+echo "|      with_extra: Enable extra algorithm support in Lite, both kernels and operators. Default OFF.   |"
+echo "|  for example:                                                                                       |"   
+echo "|      build_windows.bat with_profile  with_python with_extra                                         |"
+echo "------------------------------------------------------------------------------------------------------|"
 goto:eof
