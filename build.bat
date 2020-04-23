@@ -22,7 +22,7 @@ rem It will eagerly test all lite related unittests.
 
 :round
 @echo off
-if /I "%1"=="build_extra" (
+if /I "%1"=="with_extra" (
     set BUILD_EXTRA=ON
 ) else if /I "%1"=="with_python" (
       set BUILD_PYTHON=ON
@@ -31,8 +31,9 @@ if /I "%1"=="build_extra" (
 ) else if /I  "%1"=="build_for_ci" (
       set BUILD_FOR_CI=ON
       set WITH_TESTING=ON
-) else if /I  "%1"=="with_test" (
-      set WITH_TESTING=ON
+) else if /I  "%1"=="help" (
+      call:print_usage
+      goto:eof
 ) else (
       goto main
 )
@@ -65,7 +66,7 @@ IF NOT EXIST "%vcvarsall_dir%" (
 call:prepare_thirdparty
 
 set root_dir=%workspace%
-set build_directory=%BUILD_DIR%\build.lite.x86
+set build_directory=%BUILD_DIR%\build.lite.x86_help
 set build_test=%BUILD_DIR%\build
 set GEN_CODE_PATH_PREFIX=%build_directory%\lite\gen_code
 set DEBUG_TOOL_PATH_PREFIX=%build_directory%\lite\tools\debug
@@ -215,3 +216,20 @@ goto:eof
     ) 
 goto:eof 
 
+:print_usage
+echo "----------------------------------------------------------------------------------------------------------------"
+echo "|  Methods of compiling Paddle-lite Windows library:                                                            "
+echo "|---------------------------------------------------------------------------------------------------------------"
+echo "|  compile windows library: ( x86 )                                                                             " 
+echo "|      build_windows.bat                                                                                        "
+echo "|  print help information:                                                                                      "
+echo "|      build_windows.bat help                                                                                   "
+echo "|                                                                                                               "
+echo "|  optional argument:                                                                                           "
+echo "|      with_profile: Enable profile mode in lite framework. Default  OFF.                                       "
+echo "|      with_python: Enable Python api lib in lite mode. Default  OFF.                                           "
+echo "|      with_extra: Enable extra algorithm support in Lite, both kernels and operators. Default OFF.             "
+echo "|  for example:                                                                                                 "   
+echo "|      build_windows.bat with_profile  with_python with_extra                                                   "
+echo "----------------------------------------------------------------------------------------------------------------"
+goto:eof
