@@ -2,7 +2,7 @@
 setlocal
 setlocal enabledelayedexpansion
 
-set source_path=%~dp0
+set source_path=%~dp0\\..\\..
 set BUILD_EXTRA=OFF
 set BUILD_PYTHON=OFF
 set BUILD_DIR=%source_path%
@@ -10,7 +10,7 @@ set SHUTDOWN_LOG=ON
 set WITH_PROFILE=OFF
 set WITH_TESTING=OFF
 set BUILD_FOR_CI=OFF
-set Test_FILE="lite_tests.txt"
+
 set THIRDPARTY_TAR=https://paddle-inference-dist.bj.bcebos.com/PaddleLite/third-party-05b862.tar.gz
 
 set workspace=%source_path%
@@ -60,9 +60,10 @@ IF NOT EXIST "%vcvarsall_dir%" (
 call:prepare_thirdparty
 
 set root_dir=%workspace%
-set build_directory=%BUILD_DIR%\build.lite.x86
+set build_directory=%BUILD_DIR%\build.lite.x86_m
 set GEN_CODE_PATH_PREFIX=%build_directory%\lite\gen_code
 set DEBUG_TOOL_PATH_PREFIX=%build_directory%\lite\tools\debug
+set Test_FILE="%build_directory%\lite_tests.txt"
 
 REM "Clean the build directory."
 if EXIST "%build_directory%" (
@@ -85,7 +86,7 @@ if NOT EXIST "%DEBUG_TOOL_PATH_PREFIX%" (
 copy "%root_dir%\lite\tools\debug\analysis_tool.py" "%DEBUG_TOOL_PATH_PREFIX%\"
 
 cd "%build_directory%"
-
+goto:eof
   cmake ..   -G "Visual Studio 14 2015 Win64" -T host=x64  -DWITH_MKL=ON      ^
             -DWITH_MKLDNN=OFF   ^
             -DLITE_WITH_X86=ON  ^
@@ -132,16 +133,22 @@ goto:eof
         ) else (
                echo "The directory of third_party exists, the third-party-05b862.tar.gz exists."
                call:rm_rebuild_dir "%workspace%\third-party"
-               !python_path! %workspace%\untar.py %source_path%\third-party-05b862.tar.gz %workspace%
+               !python_path! %workspace%\lite\tools\untar.py %source_path%\third-party-05b862.tar.gz %workspace%
         )
     ) else (
         if NOT EXIST "%workspace%\third-party-05b862.tar.gz" (
             echo "The directory of third_party not exists, the third-party-05b862.tar.gz not exists."
             call:download_third_party
-            !python_path! %workspace%\untar.py %source_path%\third-party-05b862.tar.gz %workspace%
+            if EXIST "%workspace%\third-party-05b862.tar.gz" (
+                !python_path! %workspace%\lite\tools\untar.py %source_path%\third-party-05b862.tar.gz %workspace%
+            ) else (
+                echo "------------Can't download the third-party-05b862.tar.gz!------"
+                goto:eof
+            )
+            
         ) else (
             echo "The directory of third_party not exists, the third-party-05b862.tar.gz exists."
-               !python_path! %workspace%\untar.py %source_path%\third-party-05b862.tar.gz %workspace%
+               !python_path! %workspace%\lite\tools\untar.py %source_path%\third-party-05b862.tar.gz %workspace%
         )
 
     )
@@ -150,7 +157,7 @@ goto:eof
 
 :download_third_party
 powershell.exe (new-object System.Net.WebClient).DownloadFile('https://paddle-inference-dist.bj.bcebos.com/PaddleLite/third-party-05b862.tar.gz', ^
-'%workspace%third-party-05b862.tar.gz')
+'%workspace%\third-party-05b862.tar.gz')
 goto:eof
 
 :rm_rebuild_dir
@@ -190,3 +197,24 @@ echo "|  for example:                                                           
 echo "|      build_windows.bat with_profile  with_python with_extra                                         |"
 echo "------------------------------------------------------------------------------------------------------|"
 goto:eof
+
+:test_server 
+    rem Due to the missing of x86 kernels, we skip the following tests temporarily.
+    rem TODO(xxx) clear the skip list latter
+    set skip_list=("test_paddle_api" "test_cxx_api" "test_light_api" "test_apis" "test_model_bin")
+    
+    for /f %%a in ('type %test_file%') do (
+        set to_skip=0
+        for %%b in %skip_list% do (
+            if "%%a"==%%b (
+                set to_skip=1
+                echo "to skip %%a"     
+            ) 
+        )
+        if !to_skip! EQU 0 (
+            echo "Run the test of %%a"
+            ctest -C Release -R %%a
+            
+        )
+    ) 
+goto:eof 
