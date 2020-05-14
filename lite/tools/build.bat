@@ -29,15 +29,16 @@ IF NOT EXIST "%vcvarsall_dir%" (
 
 call:prepare_thirdparty
 
-if EXIST "%build_directory%" (
-    call:rm_rebuild_dir "%build_directory%"
-    md "%build_directory%"
-) 
-
 set root_dir=%workspace%
 set build_directory=%BUILD_DIR%\build.lite.x86
 set GEN_CODE_PATH_PREFIX=%build_directory%\lite\gen_code
 set DEBUG_TOOL_PATH_PREFIX=%build_directory%\lite\tools\debug
+
+if EXIST "%build_directory%" (
+    call:rm_rebuild_dir "%build_directory%"
+) 
+
+md "%build_directory%"
 
 rem for code gen, a source file is generated after a test, but is dependended by some targets in cmake.
 rem here we fake an empty file to make cmake works.
@@ -69,7 +70,7 @@ cd "%build_directory%"
 
 call "%vcvarsall_dir%" amd64
 
-msbuild /m /p:Configuration=Release lite\publish_inference.vcxproj >mylog.txt 2>&1
+msbuild /maxcpucount:8 /p:Configuration=Release lite\publish_inference.vcxproj >mylog.txt 2>&1
 goto:eof
 
 :prepare_thirdparty 
